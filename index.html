@@ -1738,7 +1738,7 @@ document.getElementById("s").innerText =
           getDifficultyNameForTier(tier);
 
         const displayName =
-          `${name}${difficultyName ? ` ${difficultyName}` : ""}`;
+          difficultyName || "Next googologism";
 
         const text=
           document.createElement(
