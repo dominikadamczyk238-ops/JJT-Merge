@@ -376,10 +376,15 @@ function renderTierValue(tier, data) {
     : "Next googologism";
 }
 
+function getDifficultyNameForTier(tier) {
+  if (!Array.isArray(tiers) || tiers.length === 0) return "";
+  const safeTier = Math.max(1, Number(tier) || 1);
+  return tiers[(safeTier - 1) % tiers.length] || "";
+}
 
 // Normal mergents are named and valued by the corresponding tier-table row.
 function getTierTableValue(tier) {
-  const data = tiers[tier - 1];
+  const data = tiers[(tier - 1) % tiers.length];
   return renderTierValue(tier, data);
 }
 
@@ -1634,9 +1639,9 @@ function render(){
   const cost=
     getCost();
 const bestData =
-  tiers[
-    bestTileAllTime - 1
-  ];
+  getDifficultyNameForTier(
+    bestTileAllTime
+  );
 
 document.body.style.background =
   `hsl(${bestTileAllTime - 1}, 35%, 50%)`;
@@ -1730,7 +1735,7 @@ document.getElementById("s").innerText =
 
 
         const difficultyName =
-          tiers[ Math.max(0, Math.min(tier - 1, tiers.length - 1)) ] || "";
+          getDifficultyNameForTier(tier);
 
         const displayName =
           `${name}${difficultyName ? ` ${difficultyName}` : ""}`;
@@ -1800,7 +1805,7 @@ document.getElementById("s").innerText =
        bestData
          ?" — "+
           escapeHTML(
-            bestData.name
+            bestData
           )
          :""
      }`;
