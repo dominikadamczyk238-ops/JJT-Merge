@@ -1,2 +1,3 @@
 # JJT-Merge
-hi2
+## The Merge Game that you merge DIFFICULTIES (yes its not googology anymore)!!!
+
