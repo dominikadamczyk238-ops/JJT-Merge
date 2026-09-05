@@ -379,7 +379,11 @@ function renderTierValue(tier, data) {
 function getDifficultyNameForTier(tier) {
   if (!Array.isArray(tiers) || tiers.length === 0) return "";
   const safeTier = Math.max(1, Number(tier) || 1);
-  return tiers[(safeTier - 1) % tiers.length] || "";
+  const zeroBasedTier = safeTier - 1;
+  const difficulty = tiers[zeroBasedTier % tiers.length] || "";
+  const cycle = Math.floor(zeroBasedTier / tiers.length) + 1;
+
+  return cycle > 1 ? `${difficulty} ${toRoman(cycle)}` : difficulty;
 }
 
 // Normal mergents are named and valued by the corresponding tier-table row.
