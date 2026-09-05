@@ -381,9 +381,11 @@ function getDifficultyNameForTier(tier) {
   const safeTier = Math.max(1, Number(tier) || 1);
   const zeroBasedTier = safeTier - 1;
   const difficulty = tiers[zeroBasedTier % tiers.length] || "";
-  const cycle = Math.floor(zeroBasedTier / tiers.length) + 1;
+  const rollover = Math.floor(zeroBasedTier / tiers.length);
 
-  return cycle > 1 ? `${difficulty} ${toRoman(cycle)}` : difficulty;
+  return rollover > 0
+    ? `${difficulty} ${toRoman(rollover)}`
+    : difficulty;
 }
 
 // Normal mergents are named and valued by the corresponding tier-table row.
