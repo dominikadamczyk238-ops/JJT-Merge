@@ -1,0 +1,1867 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Micronym Merge</title>
+<style>
+@import url('https://cdnfonts.com');
+
+* { box-sizing:border-box; }
+
+html,body {
+  margin:0;
+  width:100%;
+  min-height:100%;
+  font-family:'Glacial Indifference',sans-serif!important;
+  user-select:none;
+}
+
+body {
+  background: hsl(calc(240deg + var(--tier) - 1deg), 100%, 50%);
+  color:rgba(255, 255, 255, 0.858);
+  font-weight:700;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:25px;
+}
+
+/* TITLE + SPAWN TEXT */
+#s {
+  font-size:30px;
+  letter-spacing:2px;
+  margin-bottom:5px;
+  text-align:center;
+}
+
+#p {
+  color:#33ff00;
+  font-size:16px;
+  margin-bottom:15px;
+  letter-spacing:1px;
+  animation:blink 1.5s infinite;
+  text-align:center;
+}
+
+@keyframes blink {
+  0%,100% { opacity:1; }
+  50% { opacity:.5; }
+}
+
+/* BUTTONS */
+.controls {
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:10px;
+  margin-bottom:20px;
+}
+
+button {
+  padding:10px 15px;
+  font-weight:700;
+  font-size:14px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  letter-spacing:1px;
+  transition:.15s;
+  min-width:140px;
+}
+
+#uBtn {
+  background:#981eef;
+  color:#1c1c24;
+}
+
+#resetBtn {
+  background:#ff4757;
+  color:white;
+}
+
+button:hover { transform:scale(1.04); }
+button:active { transform:scale(.96); }
+
+#uBtn:disabled {
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+/* RESPONSIVE GRID */
+#g {
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));
+  gap:8px;
+  background:#1c1c24;
+  padding:15px;
+  border-radius:16px;
+  box-shadow:0 8px 32px rgba(0,0,0,.4);
+  width:100%;
+  max-width:1200px;
+}
+
+/* TILES */
+.tile {
+  width:100%;
+  aspect-ratio:1/1;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:10px;
+  cursor:pointer;
+  overflow:hidden;
+  position:relative;
+  transition:transform .12s,filter .12s,box-shadow .12s;
+  color:white;
+  text-shadow:
+    0 2px 3px rgba(0,0,0,.8),
+    0 0 5px rgba(0,0,0,.5);
+
+}
+.tile:hover {
+  transform:scale(1.025);
+  filter:brightness(1.1);
+}
+
+.tile.empty {
+  background:#282833;
+  cursor:default;
+}
+
+.tile.selected {
+  transform:scale(.9);
+  border:3px solid white;
+  box-shadow:0 0 20px white;
+}
+
+.tile-name {
+  font-size:13px;
+  line-height:1.15;
+  overflow-wrap:anywhere;
+}
+
+.tile-tier {
+  position:absolute;
+  bottom:5px;
+  right:7px;
+  font-size:11px;
+  opacity:.75;
+}
+
+/* LEADERBOARD */
+.leaderboard {
+  margin-top:20px;
+  background:#1c1c24;
+  padding:12px;
+  border-radius:12px;
+  box-shadow:0 4px 15px rgba(0,0,0,.3);
+  width:100%;
+  max-width:320px;
+  text-align:center;
+  color:white;
+  font-size:14px;
+}
+
+.leaderboard h3 {
+  margin:0 0 8px;
+  color:#f7b731;
+  font-size:16px;
+  letter-spacing:1px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="s">
+  MONETY: 0<br>
+  You get 0 coin(s) per second
+</div>
+<div id="p">SPAWN KAFELKÓW: TIER 1</div>
+
+<div class="controls">
+  <button id="uBtn" onclick="buyUpgrade()">+1 BASE BLOCK</button>
+  <button id="resetBtn" onclick="resetGame()">RESET RUN</button>
+</div>
+<select id="notationSelect">
+  <option value="scientific">Scientific (default)</option>
+  <option value="roman">Roman</option>
+  <option value="chemical">Chemical</option>
+</select>
+
+<div id="g"></div>
+
+<div class="leaderboard">
+  <h3>🏆 TWÓJ REKORD RUNU</h3>
+  <div id="leaderboardList">Najlepszy kafel: Tier 1</div>
+</div>
+</body>
+
+<script>
+class Roman {
+
+    constructor() {
+        // stałe AD
+        this.z = 4e9;
+        this.B = Math.log10(this.z);
+
+        // frakcje AD (ułamki)
+        this.frac = [
+    "",   // 0
+    "·",  // 1
+    ":",  // 2
+    "∴",  // 3
+    "∷",  // 4
+    "⁙",  // 5
+    "S",  // 6
+    "S·", // 7
+    "S:", // 8
+    "S∴", // 9
+    "S∷", // 10
+    "S⁙"  // 11
+];
+
+
+        // ⭐ TWOJA TABELA F — rozszerzona o podwójne i potrójne overline
+        this.F = [
+            // potrójne overline (10^9)
+            [1e9, "M̿"], [9e8, "C̿M̿"], [5e8, "D̿"], [4e8, "C̿D̿"], [1e8, "C̿"],
+            [9e7, "X̿C̿"], [5e7, "L̿"], [4e7, "X̿L̿"], [1e7, "X̿"],
+            [9e6, "M̿X̿"], [5e6, "V̿"], [4e6, "M̄V̿"],
+
+            // podwójne overline (10^6)
+            [1e6, "M̄"], [9e5, "C̄M̄"], [5e5, "D̄"], [4e5, "C̄D̄"], [1e5, "C̄"],
+            [9e4, "X̄C̄"], [5e4, "L̄"], [4e4, "X̄L̄"], [1e4, "X̄"],
+            [9e3, "M̄X̄"], [5e3, "V̄"], [4e3, "MV̄"],
+
+            // zwykłe rzymskie
+            [1e3, "M"], [900, "CM"], [500, "D"], [400, "CD"],
+            [100, "C"], [90, "XC"], [50, "L"], [40, "XL"],
+            [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]
+        ];
+    }
+
+    // -----------------------------
+    // ⭐ AD Romanize — 1:1
+    // -----------------------------
+    romanize(t) {
+        let out = "";
+
+        // część główna (odejmowanie z F)
+        for (const [value, symbol] of this.F) {
+            while (t >= value) {
+                out += symbol;
+                t -= value;
+            }
+        }
+
+        // część ułamkowa (AD logic)
+        let a = Math.round(1.2 * Math.floor(10 * t));
+
+        if (a === 0) {
+            return out === "" ? "nulla" : out;
+        }
+
+        if (a > 5) {
+           
+            out += this.frac[a];
+        }else {
+            out += this.frac[a];
+        }
+
+        return out;
+    }
+
+    // -----------------------------
+    // ⭐ formatDecimal — AD T‑tower
+    // przepisany na {m,e}
+    // -----------------------------
+    formatDecimal(n) {
+        // n = {m:number, e:number}
+
+        // wartość liczby
+        const value = n.m * Math.pow(10, n.e);
+
+        // jeśli < z → zwykły Roman (AD logic)
+        if (value < this.z) {
+            return this.romanize(value);
+        }
+
+        // log10(n) = log10(m) + e
+        const log10 = Math.log10(n.m) + n.e;
+
+        // N = log10 / B (AD logic)
+        const N = log10 / this.B;
+
+        // r = z^(N - floor(N)) (AD logic)
+        const r = Math.pow(this.z, N - Math.floor(N));
+
+        // Roman(r) + T + Roman(N) (rekurencja AD)
+        return this.romanize(r) + "↑" + this.formatDecimal({
+            m: N,
+            e: 0
+        });
+    }
+}
+class Chemical {
+  /* =========================================================
+   CHEMICAL / ELEMENT NOTATION
+   ========================================================= */
+  static formatChemicalNumber(value) {
+    if (value == null) return "0.00";
+
+    // Supports the game's {m,e} values and break_eternity/break_infinity objects.
+    let exponent = Number(value.e ?? value.exponent);
+    let mantissa = Number(value.m ?? value.mantissa);
+    if (!Number.isFinite(exponent) || !Number.isFinite(mantissa)) {
+      const logarithm = typeof value.log10 === "function" ? Number(value.log10()) : NaN;
+      if (!Number.isFinite(logarithm)) return "0.00";
+      exponent = Math.floor(logarithm);
+      mantissa = Math.pow(10, logarithm - exponent);
+    }
+    if (mantissa === 0) return "0.00";
+
+    const step = Math.floor(exponent / 3);
+    const scaledMantissa = mantissa * Math.pow(10, exponent - step * 3);
+    let suffix = "";
+
+    if (step >= 1 && step <= Chemical.chemicalElements.length) {
+      suffix = Chemical.chemicalElements[step - 1];
+    } else if (step > Chemical.chemicalElements.length) {
+      // step 119 is H-H; subsequent values are a base-118 counter.
+      let index = step - Chemical.chemicalElements.length - 1;
+      const base = Chemical.chemicalElements.length;
+      const right = index % base;
+      const left = Math.floor(index / base);
+      suffix = `${Chemical.chemicalElements[left]}-${Chemical.chemicalElements[right]}`;
+    }
+
+    return `${scaledMantissa.toFixed(2)}${suffix ? " " + suffix : ""}`;
+  }
+}
+
+Chemical.chemicalElements = [
+  "H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg","Al","Si","P","S","Cl","Ar","K","Ca",
+  "Sc","Ti","V","Cr","Mn","Fe","Co","Ni","Cu","Zn","Ga","Ge","As","Se","Br","Kr","Rb","Sr","Y","Zr",
+  "Nb","Mo","Tc","Ru","Rh","Pd","Ag","Cd","In","Sn","Sb","Te","I","Xe","Cs","Ba","La","Ce","Pr","Nd",
+  "Pm","Sm","Eu","Gd","Tb","Dy","Ho","Er","Tm","Yb","Lu","Hf","Ta","W","Re","Os","Ir","Pt","Au","Hg",
+  "Tl","Pb","Bi","Po","At","Rn","Fr","Ra","Ac","Th","Pa","U","Np","Pu","Am","Cm","Bk","Cf","Es","Fm",
+  "Md","No","Lr","Rf","Db","Sg","Bh","Hs","Mt","Ds","Rg","Cn","Nh","Fl","Mc","Lv","Ts","Og"
+];
+
+const formatChemicalNumber = Chemical.formatChemicalNumber;
+
+
+function setNotationMode(mode) {
+  notationMode = mode;
+}
+const RomanFormatter = new Roman();
+let notationMode = "scientific";
+function fNumRouter({m,e}) {
+  if (notationMode === "roman") {
+    return RomanFormatter.formatDecimal({m,e});
+  }
+  if (notationMode === "chemical") {
+    return Chemical.formatChemicalNumber({m,e});
+  }
+  return fNum({m,e});
+}
+
+function renderTierValue(tier, data) {
+  return data && data.value !== undefined
+    ? data.value
+    : "Next googologism";
+}
+
+
+// Normal mergents are named and valued by the corresponding tier-table row.
+function getTierTableValue(tier) {
+  const data = tiers[tier - 1];
+  return renderTierValue(tier, data);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const sel = document.getElementById("notationSelect");
+  if (sel) {
+    sel.addEventListener("change", e => {
+      setNotationMode(e.target.value);
+      render();
+    });
+  }
+});
+
+
+
+
+
+const tiers = [
+  "The First Difficulty",
+  "The Lower Gap",
+  "Stability",
+  "Rejection",
+  "Constant",
+  "Familiarity",
+  "Expressible",
+  "Player.nextDifficulty();",
+  "Attainable",
+  "Negativity",
+  "Unimpossible",
+  "Friendliness",
+  "True Ease",
+  "A",
+  "Felix the ДА",
+  "Exist",
+  "Disco",
+  "Relax",
+  "Skip",
+  "Restful",
+  "Ifinite-Dot",
+  "Ifinite-Easy",
+  "Ifinity",
+  "Instant Win",
+
+
+  "Millisecondless",
+  "Astronomical",
+  "Win",
+  "Winsome",
+  "Do Nothing",
+  "Sleepful",
+  "Blessing",
+  "Vintage",
+  "Ifinitude",
+  "Just Air",
+  "Happylike",
+  "Locomotion",
+  "Walkthrough",
+  "Automatic Joyful",
+  "Unlosable",
+  "Roll",
+  "Mazeophobia",
+  "Shattered Babass",
+  "Frivolous",
+  "Vibeness",
+  "Automatic",
+  "Spontaneous",
+
+
+
+  "Joyful",
+  "Do Something",
+  "Placid",
+  "Press a Key",
+  "Tap to Move",
+  "Walk A Slope",
+  "Climb A Truss",
+  "Tranquil",
+  "Jumpless",
+  "Starter",
+  "Cakewalk",
+  "Sweet",
+  "Sugary",
+  "Aesthetic",
+  "Lovely",
+  "Glee",
+  "Flowerness",
+  "Coasterifying",
+  "A Difficulty Named Difficulty",
+  "Pleasant",
+  "Piece o' Cake",
+  "Tutorial",
+  "Hellish Encore",
+  "Delightful",
+  "TooEasy",
+  "Peaceful",
+  "Playful",
+  "Babying",
+  "Magnificent",
+  "Facile",
+  "Effortlessless",
+  "Gravel",
+
+
+
+  "Effortless",
+  "Playground",
+  "Elementary",
+  "Simple",
+  "Easy",
+  "Neat",
+  "Calm",
+  "Switch",
+  "Medium",
+  "Normal",
+  "Intermediate",
+  "Extraordinary",
+  "Hard",
+  "Onerous",
+  "Tricky",
+  "Easeful",
+  "Difficult",
+  "Strenuous",
+  "Menacing",
+  "Harming",
+  "Challenging",
+  "Irritating",
+  "Maniacal",
+  "Hectic",
+  "Intense",
+  "TooMedium",
+  "Severe",
+  "Hellish",
+  "Remorseless",
+  "C0RrUpT",
+  "Relentless",
+  "Angerable",
+
+  "Insane",
+  "Thanos",
+  "Madness",
+  "Classical",
+  "Extreme",
+  "Uneasy",
+  "Turmoil",
+  "Absurd",
+  "Terrifying",
+  "Ghastly",
+  "Horrifying",
+  "Petrifying",
+  "Catastrophic",
+  "Dorcelessness",
+  "Eccentric",
+  "Champion's Road",
+  "Horrific",
+  "Retrograde",
+  "Harrowing",
+  "Confident",
+  "Unreal",
+  "HYPER",
+  "Treacherous",
+  "Oblivious",
+  "Anguish",
+  "Prodigious",
+  "The Human Limit",
+  "Misanthrope",
+
+  "nil",
+  "Jank",
+  "The Heart of Void",
+  "eRRoR",
+  "Nightmare",
+  "Literal",
+  "WHY",
+  "Maximum Overdrive",
+  "No",
+  "Purgatory",
+  "DEATH",
+  "Nullifying",
+  "HELL",
+  "Vortex",
+  "TARTARUS",
+  "CALAMITY",
+  "Neutralize",
+  "Killjoying",
+  "Unimaginable",
+  "Dimension",
+  "Omega",
+  "DisarrayText2",
+  "SUFFER",
+  "CHAOS",
+  "Aleph-Null",
+  "Mystical",
+  "Reality",
+  "Immeasurable",
+  "Noxious",
+  "Malicious",
+  "Obama Prism",
+  "Malevolent",
+
+  "Building",
+  "Under Construction",
+  "Does Not Compute",
+  "Exile",
+  "Invigorating",
+  "Apocalyptic",
+  "Eternal Outrage",
+  "Destructive",
+  "Dissonant",
+  "Mischievous",
+  "ᴇʟᴅʀɪᴛᴄʜ",
+  "Monstrous",
+  "Inimical",
+  "Horrendous",
+  "Ultimate",
+  "Nought",
+  "System Error",
+  "Error.exe",
+  "Simply Beyond",
+  "Ultra",
+  "Critical",
+  "Absolutism",
+  "Insistent",
+  "Shocking",
+  "Victor",
+  "Oblivion",
+  "QUANTUM",
+  "Miracle",
+  "Y E E T U S",
+  "DELETE",
+  "Interruption",
+  "Xi-Alpha",
+  "D-E-L-T-A",
+  "Ÿ",
+  "Theta-Void",
+  "Ultimaniac",
+  "Supreme",
+  "Phi",
+  "UNTHINKABLE",
+  "Ultra Instinct",
+  "Mortifying",
+  "Dreadful.exe",
+  "Transfinite",
+  "RoorXD",
+  "RoorHELL",
+  "Jesus Ballin'",
+  "HyperViolent",
+  "Enclosed",
+  "El Vacio",
+  "Unpossible",
+  "Universe Disruption",
+  "Complete: Obstacles",
+  "Illegal",
+  "Bad Request",
+  "Universal Glitch",
+  "FalseGanar",
+  "Hopeless",
+  "Nugatory",
+  "Gameifying",
+  "Infinity",
+  "Void",
+  "Doog",
+  "Dissension",
+  "MegaDeath",
+  "TooPrecise",
+  "Epitome",
+  "Agony",
+  "Abyssal",
+  "Dilly Impossible",
+  "Gigaversal",
+  "Unreasonable",
+  "Celestial",
+  "Arcane",
+  "Detroit",
+  "Sacrificingly Impossible",
+  "Satan Tartarus Lucifer Void",
+  "QR Code",
+  "Vacant",
+  "How‽",
+  "Errorisation",
+  "Godlike",
+  "Esoteric",
+  "Complete Users",
+  "BobuxDeath",
+  "Aleph-DEATH",
+  "Limiting",
+  "Asthenic",
+  "The Crystal Core",
+  "Rush",
+  "Aleph-VSC",
+  "Misery",
+  "Mysterious",
+  "Undocumented",
+  "Denial",
+  "Aleph-Something",
+  "Omniscient",
+  "Enigmatic",
+  "Vrery hawrfd rdifficutl!!",
+  "Free-smiley.de",
+  "HELLWRATH",
+  "Hellevan",
+  "LOOP",
+  "True Core",
+  "Eɼɼosion",
+  "Confusion",
+  "Dynamix",
+  "Eshinion",
+  "Caught",
+  "TooAbnormal",
+  "Catch",
+  "IMPOSSIBLE.EXE",
+  "Exploitist Elite",
+  "TooTooHard",
+  "True Obama Prism",
+  "Zany",
+  "Oh Noez!",
+  "Viratical",
+  "Pinnacle",
+  "The Middleline",
+
+  "StardarkText",
+ "Devastational",
+  "3rd Dimension",
+  "Supreme-Null",
+  "Aleph-Aleph-Null",
+  "Aleph-Void",
+  "Aleph-Virus",
+  "Aleph",
+  "Uproarious",
+  "DEATHfinite",
+  "Questioning Insanity",
+  "Omnipresent",
+  "THE BORDERLINE",
+  "Cryptic",
+  "Craziness",
+  "Speedrun",
+  "Aleph-TS",
+  "Aerodynamix",
+  "Afflictive",
+  "Pandora",
+  "Destroiny",
+
+
+
+  "Microwave",
+  "Splitting",
+  "Audiolizer",
+  "Abolished",
+  "MCrazy",
+  "The Black Hole",
+  "DeathWrath",
+  "53?",
+  "Complete:Discord",
+  "RoorOmega",
+  "Obstructed",
+  "Inconvenience",
+  "Libet's Delay",
+  "Flummoxing",
+  "Supermundane",
+  "Broken",
+  "Vigorous",
+
+  "Theoretical",
+  "Arcanite",
+  "Amalgam",
+  "Doggo",
+  "Shoving",
+  "Difficultypedia",
+  "There Is No Difficulty",
+  "The Crystal HELL",
+  "Omnipotent",
+  "couch",
+  "Are You Done Yet?",
+  "Unorganized Reality",
+  "Textify",
+  "Acceptance",
+  "Beyond Infinite",
+  "Deranged.txt",
+
+  "Aleph-Natsuki",
+  "Teardrop",
+  "Newarticletext",
+  "Vaporwave",
+  "Dolorem Aeterna",
+  "Dullard",
+  "Fearfulness",
+  "Kaizocore",
+  "Hallucinogenic",
+  "The Absolute Dilly Impossible",
+  "TITANICAL",
+  "Universal Destruction",
+  "Greyness",
+  "Just Difficulties and Towers",
+  "Divinity",
+  "Ostalute",
+  "Absolute",
+
+  "Unknown",
+  "Unhappy Slamo",
+  "Noarticletext",
+  "Inexplicable",
+  "TooSoon",
+  "Devastating",
+  "Indiscernible",
+  "TON 618",
+  "ΩmniΩmega",
+  "Cataclysm",
+  "CHAOS XD",
+  "Sakupen",
+  "Namibia",
+  "Beyond",
+  "Heat",
+  "THE CURSED DIFFICULTY",
+  "Eternified Partyness",
+  "Evolutionary",
+  "Nightfall",
+  "Doom O’ Clock",
+  "Abjunctive",
+  "Antichrist",
+  "Aleph-Eternity",
+  "Conclusion",
+  "Zerstörung",
+  "Tomfoolery",
+  "Far Reaches of Impossibility",
+  "P.O.S.S.I.B.L.E",
+  "Conflicting",
+  "Obscene",
+  "KLJY",
+  "Mania",
+  "Rubik's Cube",
+  "Grief",
+  "π",
+  "4th Dimension",
+  "Riftial",
+  "Average Babass",
+  "Patterns",
+  "Teracalculon",
+  "Chaosmatic",
+  "Collaborative Chaos",
+  "Choice",
+  "THE GREAT TRANASANIC COMBINATION",
+  "Oh Rizz!",
+  "Sunt Vera Ultima",
+  "Unfathomability",
+  "IT TRANSCENDS ALL",
+  "Ungraspable",
+  "Aleph-Math",
+  "Its Just A Burning Memory",
+  "ABSOLUTELY UNPOSSIBLE",
+  "Twee",
+  "Psychotic Hell",
+  "5th Dimension",
+  "Psychosomatic",
+  "Deterioration",
+  "OneSection",
+  "SYNDROME",
+  "RGB",
+  "Starglass",
+  "DEADLY TUBULAR DEATH",
+  "Mythic",
+  "Professional",
+  "Endless",
+  "BRUTAL CALAMITY",
+  "Prevalition",
+  "Transmaximal",
+  "Kenos",
+  "Inconceivable",
+  "11th Dimension",
+  "Eviscerating",
+  "Spinning Skull",
+  "ABSOLUTE INFINITY",
+  "Primal Babass",
+  "Culmination",
+  "After",
+  "True Hell",
+  "Effortful",
+  "Unboundable",
+  "Uncomputable",
+  "Undefinable",
+  "Penultimate",
+  "Unreachable",
+  "Immaculate",
+  "Fragmentized",
+  "Conglomerated",
+  "Summation",
+  "The Rebirth System",
+  "Liminal",
+  "Transcendence",
+  "Uber",
+  "Ineffable",
+  "Inutilis",
+  "The Upper Gap",
+
+  "The Final Difficulty."
+
+];
+
+
+let difficultyIndex = 0;
+let cycle = 1;
+
+function toRoman(num) {
+  const values = [
+    [1000, "M"], [900, "CM"], [500, "D"], [400, "CD"],
+    [100, "C"], [90, "XC"], [50, "L"], [40, "XL"],
+    [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]
+  ];
+
+  let result = "";
+
+  for (const [value, numeral] of values) {
+    while (num >= value) {
+      result += numeral;
+      num -= value;
+    }
+  }
+
+  return result;
+}
+
+function getNextDifficulty() {
+  const baseName = tiers[difficultyIndex % tiers.length];
+  const name = `${baseName} ${toRoman(cycle)}`;
+
+  // Loop back to the first difficulty after The Final Difficulty.
+  if (baseName === "The Final Difficulty.") {
+    difficultyIndex = 0;
+    cycle++;
+    return name;
+  }
+
+  difficultyIndex++;
+  return name;
+}
+
+
+
+
+
+/* =========================================================
+   BIG NUMBER
+   ========================================================= */
+
+const nNew=(m,e)=>{
+  if(m===0)return{m:0,e:0};
+
+  const c=Math.floor(
+    Math.log10(Math.abs(m))
+  );
+
+  return{
+    m:m/Math.pow(10,c),
+    e:e+c
+  };
+};
+
+const nAdd=(a,b)=>{
+  if(a.m===0)return b;
+  if(b.m===0)return a;
+
+  const d=a.e-b.e;
+
+  if(d>15)return a;
+  if(d<-15)return b;
+
+  return nNew(
+    a.m*Math.pow(10,d)+b.m,
+    b.e
+  );
+};
+
+const nSub=(a,b)=>{
+  const d=a.e-b.e;
+
+  if(d>15)return a;
+  if(d<-15)return nNew(-b.m,b.e);
+
+  return nNew(
+    a.m*Math.pow(10,d)-b.m,
+    b.e
+  );
+};
+
+const nGte=(a,b)=>{
+  if(a.e!==b.e){
+    return a.e>b.e;
+  }
+
+  return a.m>=b.m;
+};
+
+const nPow=(base,exponent)=>{
+  if(exponent===0){
+    return{m:1,e:0};
+  }
+
+  const t=
+    exponent*Math.log10(base);
+
+  const e=Math.floor(t);
+
+  return nNew(
+    Math.pow(10,t-e),
+    e
+  );
+};
+
+const fNum=n=>{
+  if(n.m===0)return"0";
+
+  if(n.e<4){
+    return Math.floor(
+      n.m*Math.pow(10,n.e)
+    ).toString();
+  }
+
+  return n.m.toFixed(2)+"e"+n.e;
+};
+
+
+
+/* =========================================================
+   GAME STATE
+   ========================================================= */
+
+let coins={m:0,e:0};
+
+let upgradeTier=
+  parseInt(
+    localStorage.getItem("micronym_upgrade")
+  )||0;
+
+
+let grid=Array(36).fill(1);
+
+try{
+
+  const savedGrid=
+    localStorage.getItem("micronym_grid");
+
+  if(savedGrid){
+
+    const loadedGrid=
+      JSON.parse(savedGrid);
+
+    if(
+      Array.isArray(loadedGrid)&&
+      loadedGrid.length===64&&
+      loadedGrid.every(
+        tile=>
+          Number.isInteger(tile)&&
+          tile>=0
+      )
+    ){
+
+      grid=loadedGrid;
+
+    }
+
+  }
+
+}catch(e){
+
+  grid=Array(64).fill(1);
+
+}
+
+let selected=null;
+
+let maxTileInRun=
+  parseInt(
+    localStorage.getItem(
+      "micronym_run_best"
+    )
+  )||1;
+
+let bestTileAllTime=
+  parseInt(
+    localStorage.getItem(
+      "micronym_best"
+    )
+  )||maxTileInRun;
+
+
+/* =========================================================
+   LOAD COINS SAFELY
+   ========================================================= */
+
+try{
+
+  const savedCoins=
+    localStorage.getItem(
+      "micronym_coins"
+    );
+
+  if(savedCoins){
+
+    const parts=
+      savedCoins.split("e");
+
+    if(parts.length===2){
+
+      coins=nNew(
+        parseFloat(parts[0]),
+        parseInt(parts[1])
+      );
+
+    }
+
+  }
+
+}catch(e){
+
+  coins={m:0,e:0};
+
+}
+
+
+/* =========================================================
+   COST = 10,000 × BASE^TIER
+   ========================================================= */
+
+function getBase(){
+
+  return Math.max(
+    3.01
+
+    
+  );
+
+}
+
+function getCost(){
+
+  const power=
+    nPow(
+      getBase(),
+      upgradeTier
+    );
+
+  // Prevent log10(0) from making the initial cost invalid.
+  const level = Math.max(1, upgradeTier);
+  const divisor = Math.max(
+    1,
+    Math.log(
+      level * Math.log(level + Math.pow(11, Math.log10(level))) + 1
+    )
+  );
+
+  return nNew(power.m * 10000 / divisor, power.e);
+
+}
+
+
+
+
+/* =========================================================
+   SPAWN
+   ========================================================= */
+
+function getSpawnTier(){
+
+  return Math.min(
+    upgradeTier + 1, 
+    tiers.length)
+
+}
+
+
+/* =========================================================
+   SAVE
+   ========================================================= */
+
+function save(){
+
+  localStorage.setItem(
+    "micronym_coins",
+    coins.m+"e"+coins.e
+  );
+
+  localStorage.setItem(
+    "micronym_upgrade",
+    upgradeTier
+  );
+
+  localStorage.setItem(
+    "micronym_grid",
+    JSON.stringify(grid)
+  );
+
+  localStorage.setItem(
+    "micronym_run_best",
+    maxTileInRun
+  );
+
+  localStorage.setItem(
+    "micronym_best",
+    bestTileAllTime
+  );
+
+
+
+}
+
+
+/* =========================================================
+   TIER COLORS
+   ========================================================= */
+
+/* =========================================================
+   TIER COLORS & STYLES (NOWY PODZIAŁ ERY)
+   ========================================================= */
+
+function tierColor(tier){
+
+  // Up to 720 → normal HSL color
+  if (tier <= 720) {
+    const hue = (((tier - 1) % 360) + 1) * 5;
+    return `hsl(${hue},100%,50%)`;
+  }
+else if (tier > 720 && tier <= 1400) {
+  // After 720 → gradient based on hue
+  const hue = (((tier - 1) % 360) + 1) * 5;
+
+  const c1 = `hsl(${hue},100%,50%)`;
+  const c2 = `hsl(${(hue + 45) % 360},100%,50%)`;
+
+  return `linear-gradient(90deg, ${c1}, ${c2})`;
+}
+else if (tier >= 1401 && tier <= 2100) {
+  // 1401-2100 → move backward through the inverted hue spectrum
+  const hue = -((((tier - 1) % 360) + 1) * 5) + 180;
+  const c1 = `hsl(${hue},100%,50%)`;
+  const c2 = `hsl(${hue - 45},100%,50%)`;
+
+  return `linear-gradient(270deg, ${c2}, ${c1})`;
+}
+else if (tier >= 2101 && tier <= 2800) {
+  // 2101-2800 → gradient based on the inverted hue
+  const hue = (((tier - 1) % 360) + 1) * 5 + 180;
+
+  const c1 = `hsl(${hue},100%,50%)`;
+  const c2 = `hsl(${hue - 45},100%,50%)`;
+
+  return `linear-gradient(135deg, ${c1}, ${c2})`;
+}
+else if (tier >= 2801 && tier <= 3500) {
+  // 2801-3500 → gradient based on the inverted hue
+  const hue = -(((tier - 1) % 360) + 1) * 5 + 180;
+
+  const c1 = `hsl(${hue},100%,50%)`;
+  const c2 = `hsl(${hue + 45},100%,50%)`;
+  return `linear-gradient(315deg, ${c1}, ${c2})`;
+} 
+
+}
+
+/* =========================================================
+   BOARD
+   ========================================================= */
+
+function fillBoard(){
+
+  const spawn=
+    getSpawnTier();
+
+  grid.forEach((x,i)=>{
+
+    if(x===0){
+
+      grid[i]=spawn;
+
+    }
+
+    if(
+      grid[i]>maxTileInRun
+    ){
+
+      maxTileInRun=
+        grid[i];
+
+    }
+
+  });
+
+  if(
+    maxTileInRun>
+    bestTileAllTime
+  ){
+
+    bestTileAllTime=
+      maxTileInRun;
+
+  }
+
+}
+
+
+/* =========================================================
+   MERGE
+   ========================================================= */
+
+let mergeAllCooldown = false;
+
+function mergeAll(){
+
+  // 10 second cooldown
+  if(mergeAllCooldown){
+    return;
+  }
+
+  mergeAllCooldown=true;
+
+  let merged=true;
+
+  while(merged){
+
+    merged=false;
+
+    // Find two tiles of the same tier
+    outer:
+    for(let a=0;a<grid.length;a++){
+
+      if(grid[a]===0){
+        continue;
+      }
+
+      for(let b=a+1;b<grid.length;b++){
+
+        if(
+          grid[b]===grid[a] &&
+          grid[b]>0
+        ){
+
+          const tier=
+            grid[a];
+
+          const next=
+            tier+1;
+
+          // Remove both
+          grid[a]=0;
+          grid[b]=0;
+
+          // Create next tier
+          grid[b]=next;
+
+
+          // Best tile
+          if(next>maxTileInRun){
+            maxTileInRun=next;
+          }
+
+          if(maxTileInRun>bestTileAllTime){
+            bestTileAllTime=maxTileInRun;
+          }
+
+          merged=true;
+
+          break outer;
+        }
+
+      }
+
+    }
+
+  }
+
+  selected=null;
+
+  // Refill empty spaces after ALL merging is finished
+  fillBoard();
+
+  save();
+  render();
+
+  // 10 seconds
+  setTimeout(()=>{
+
+    mergeAllCooldown=false;
+
+  },10000);
+
+}
+
+
+/* =========================================================
+   MERGE ALL KEYBIND
+   M = MERGE ALL
+   ========================================================= */
+
+document.addEventListener("keydown",(e)=>{
+
+  if(
+    e.key.toLowerCase()==="m" &&
+    !e.repeat
+  ){
+
+    mergeAll();
+
+  }
+
+});
+
+
+
+
+
+/* =========================================================
+   CLICK TILE
+   ========================================================= */
+
+function clickTile(index){
+
+  const from=
+    selected;
+
+  const to=
+    grid[index];
+
+  if(
+    from===null
+  ){
+
+    if(
+      to>0
+    ){
+
+      selected=index;
+
+    }
+
+    render();
+    return;
+
+  }
+
+  if(
+    from===index
+  ){
+
+    selected=null;
+    render();
+    return;
+
+  }
+  /* =====================================================
+     SAME TIER = NEXT GOOGOLOGISM
+     ===================================================== */
+
+  if(
+    from!==null &&
+    grid[from]===to &&
+    to>0
+  ){
+
+    const next=
+      grid[from]+1;
+
+    grid[from]=0;
+    grid[index]=next;
+    if(
+      next>maxTileInRun
+    ){
+
+      maxTileInRun=
+        next;
+
+    }
+
+    if(
+      maxTileInRun>
+      bestTileAllTime
+    ){
+
+      bestTileAllTime=
+        maxTileInRun;
+
+    }
+
+    selected=null;
+
+    fillBoard();
+    save();
+    render();
+
+    return;
+  }
+
+
+  /* =====================================================
+     MOVE
+     ===================================================== */
+
+  if(to===0){
+
+    grid[index]=
+      grid[from];
+
+    grid[from]=0;
+
+    selected=null;
+
+    save();
+    render();
+
+    return;
+  }
+
+
+  /* SELECT OTHER TILE */
+  selected =
+    to > 0
+      ? index
+      : null;
+
+  render();
+
+}
+
+/* =========================================================
+   UPGRADE
+   ========================================================= */
+
+function buyUpgrade(){
+
+  const cost=
+    getCost();
+
+  if(
+    !nGte(
+      coins,
+      cost
+    )
+  ){
+
+    return;
+
+  }
+
+  coins=
+    nSub(
+      coins,
+      cost
+    );
+
+  upgradeTier++;
+
+
+  const spawn=
+    getSpawnTier();
+
+  grid.forEach((x,i)=>{
+
+    if(
+      x>0&&
+      x<spawn
+    ){
+
+      grid[i]=spawn;
+
+    }
+
+  });
+
+  fillBoard();
+
+  save();
+  render();
+
+}
+
+
+/* =========================================================
+   RESET RUN
+   DOES NOT DELETE BEST SCORE
+   ========================================================= */
+
+function resetGame(){
+
+  if(
+    !confirm(
+      "Zresetować run?"
+    )
+  ){
+
+    return;
+
+  }
+
+  coins={
+    m:0,
+    e:0
+  };
+
+  upgradeTier=0;
+
+  grid=
+    Array(64).fill(1);
+
+  selected=null;
+
+  maxTileInRun=1;
+
+  fillBoard();
+
+  save();
+  render();
+
+}
+
+
+/* =========================================================
+   ESCAPE HTML
+   ========================================================= */
+
+function escapeHTML(text){
+
+  return String(text)
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
+
+}
+
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+
+function render(){
+
+  const spawn=
+    getSpawnTier();
+
+  const cost=
+    getCost();
+const bestData =
+  tiers[
+    bestTileAllTime - 1
+  ];
+
+document.body.style.background =
+  `hsl(${bestTileAllTime - 1}, 35%, 50%)`;
+document.getElementById("s").innerText =
+  "Coins: " + fNumRouter(coins) +
+  "\nYou get " + fNumRouter(Income) + " coin(s) per second.";
+  /* =====================================================
+     SPAWN
+     ===================================================== */
+
+  document.getElementById(
+    "p"
+  ).innerText=
+    "SPAWN KAFELKÓW: TIER "+
+    spawn;
+
+
+  /* =====================================================
+     UPGRADE BUTTON
+     ===================================================== */
+
+  const uBtn=
+    document.getElementById(
+      "uBtn"
+    );
+
+  uBtn.innerText=
+    "+1 BASE BLOCK (KOSZT: "+
+    fNumRouter(cost)+
+    ")";
+
+  uBtn.disabled=
+    !nGte(
+      coins,
+      cost
+    );
+
+
+  /* =====================================================
+     BOARD
+     ===================================================== */
+
+  const board=
+    document.getElementById(
+      "g"
+    );
+
+  board.innerHTML="";
+
+
+  grid.forEach(
+    (tier,index)=>{
+
+      const tile=
+        document.createElement(
+          "div"
+        );
+
+      tile.className=
+        "tile";
+
+
+      /* EMPTY */
+
+      if(tier===0){
+
+        tile.classList.add(
+          "empty"
+        );
+
+      }
+
+
+      /* NON-EMPTY */
+
+      else{
+
+        tile.style.background=
+          tierColor(tier);
+
+
+        if(
+          selected===index
+        ){
+
+          tile.classList.add(
+            "selected"
+          );
+
+        }
+
+
+        const difficultyName =
+          tiers[ Math.max(0, Math.min(tier - 1, tiers.length - 1)) ] || "";
+
+        const displayName =
+          `${name}${difficultyName ? ` ${difficultyName}` : ""}`;
+
+        const text=
+          document.createElement(
+            "div"
+          );
+
+        text.className=
+          "tile-name";
+
+        text.innerHTML=
+          `<b>${
+            escapeHTML(
+              displayName
+            )
+          }</b>`;
+
+        tile.appendChild(
+          text
+        );
+
+
+        const tierText=
+          document.createElement(
+            "div"
+          );
+
+        tierText.className=
+          "tile-tier";
+
+        tierText.innerText=
+          "T"+tier;
+
+        tile.appendChild(
+          tierText
+        );
+
+      }
+
+
+      tile.onclick=
+        ()=>clickTile(index);
+
+      board.appendChild(
+        tile
+      );
+
+    }
+  );
+
+  /* =====================================================
+     BEST TILE
+     ===================================================== */
+
+
+
+  document.getElementById(
+    "leaderboardList"
+  ).innerHTML=
+    `Najlepszy kafel:
+     <b>Tier ${
+       bestTileAllTime
+     }</b>
+     ${
+       bestData
+         ?" — "+
+          escapeHTML(
+            bestData.name
+          )
+         :""
+     }`;
+
+}
+
+
+/* =========================================================
+   PASSIVE COINS
+   ========================================================= */
+let Income = {
+  m: 0,
+  e: 0
+};
+
+
+
+/* =========================================================
+   PASSIVE COINS (200ms)
+   ========================================================= */
+
+
+// GAME TICK — 20 razy na sekundę (50ms)
+// TICK — tylko income i coins
+setInterval(() => {
+    let newIncome = { m: 0, e: 0 };
+    grid.forEach(tier => {
+        if (tier > 0) {
+        newIncome = nAdd(newIncome, nPow(3, tier));
+        }
+    });
+    Income = nNew(newIncome.m , newIncome.e);
+
+    coins = nAdd(coins, Income);
+}, 1000);
+
+// RENDER — tylko UI
+setInterval(() => {
+    render();
+}, 1000);
+
+
+
+/* =========================================================
+   START
+   ========================================================= */
+
+if(
+  grid.every(
+    v=>v===0
+  )
+){
+
+
+
+fillBoard();
+}
+save();
+
+render();
+
+</script>
+</body>
+</html>
